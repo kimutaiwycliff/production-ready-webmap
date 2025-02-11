@@ -6,9 +6,9 @@ import { Provider } from 'react-redux';
 const QueryProvider = ({ children }) => {
   const queryClient = new QueryClient();
   return (
-    <QueryClientProvider client={queryClient}>
-      <Provider store={store}>{children}</Provider>
-    </QueryClientProvider>
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </Provider>
   );
 };
 export default QueryProvider;

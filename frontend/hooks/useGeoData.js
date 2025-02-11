@@ -1,16 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+'use client';
+
+import { setGeoData } from "@/store/geoSlice";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
 
 const fetchGeoData = async () => {
-  const { data } = await axios.get(
-    'http://localhost:8080/geoserver/geodb/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=geodb:geospatial_data&outputFormat=application/json'
-  );
-  return data;
+  try {
+    const { data } = await axios.get("http://localhost:5001/api/geojson", {
+      timeout: 5000, // Set a timeout to avoid hanging requests
+    });
+    return data;
+  } catch (error) {
+    console.error("Error fetching geo data:", error.message);
+    return null; 
+  }
 };
 
-export default function useGeospatial() {
-  return useQuery({
-    queryKey: ['geoData'],
+
+export const useGeoData = () => {
+  const dispatch = useDispatch();
+  const geoData = useSelector((state) => state.geo.geoData);
+
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["geojson"],
     queryFn: fetchGeoData,
+    onSuccess: (fetchedData) => {
+      dispatch(setGeoData(fetchedData));  // Save in Redux store
+    },
   });
-}
+
+  return { data: geoData || data, error, isLoading };
+};

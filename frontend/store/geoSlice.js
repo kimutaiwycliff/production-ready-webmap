@@ -1,26 +1,18 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  geoData: null,
-  loading: false,
-  error: null,
+  geoData: null,  
 };
 
 const geoSlice = createSlice({
-  name: 'geo',
+  name: "geo",
   initialState,
   reducers: {
     setGeoData: (state, action) => {
       state.geoData = action.payload;
     },
-    setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
-    setError: (state, action) => {
-      state.error = action.payload;
-    },
   },
 });
 
-export const { setGeoData, setLoading, setError } = geoSlice.actions;
+export const { setGeoData } = geoSlice.actions;
 export default geoSlice.reducer;
