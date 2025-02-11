@@ -1,0 +1,17 @@
+<layer>
+  <name>territories</name>
+  <id>LayerInfoImpl-72b61a2d:194f5fa1b9d:-7ff2</id>
+  <type>VECTOR</type>
+  <defaultStyle>
+    <id>StyleInfoImpl-72b61a2d:194f5fa1b9d:-7ffe</id>
+  </defaultStyle>
+  <resource class="featureType">
+    <id>FeatureTypeInfoImpl-72b61a2d:194f5fa1b9d:-7ff3</id>
+  </resource>
+  <attribution>
+    <logoWidth>0</logoWidth>
+    <logoHeight>0</logoHeight>
+  </attribution>
+  <dateCreated>2025-02-11 17:13:39.886 UTC</dateCreated>
+  <dateModified>2025-02-11 17:14:19.46 UTC</dateModified>
+</layer>
