@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useGeoData } from '@/hooks/useGeoData';
@@ -13,6 +13,7 @@ const Map = () => {
   const [layersVisible, setLayersVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState(null);
+  const mapRef = useRef(null); // Store map instance
 
   useEffect(() => {
     if (data) {
@@ -31,28 +32,31 @@ const Map = () => {
   useEffect(() => {
     if (!filteredData) return;
 
-    const map = L.map('map').setView(
-      [-1.2983702370082568, 36.88112302280874],
-      12
-    );
-    // const initialBounds = map.getBounds();
+    // Initialize map only once
+    if (!mapRef.current) {
+      mapRef.current = L.map('map').setView(
+        [-1.2983702370082568, 36.88112302280874], // Default center
+        12
+      );
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapRef.current);
+    }
 
-    const geoJson = L.geoJSON(filteredData, {
+    const map = mapRef.current;
+    const geoJsonLayer = L.geoJSON(filteredData, {
       style: (feature) => ({ color: '#000', weight: 0.5 }),
       pointToLayer: (feature, latlng) =>
-        L.marker(latlng, { icon }).bindPopup('I am a point'),
+        L.marker(latlng, { icon }).bindPopup(feature.properties?.name || 'Point'),
       onEachFeature: (feature, layer) => {
         if (feature.geometry.type === 'MultiPolygon') {
           layer
-            .bindPopup(`${feature.properties.name}`)
+            .bindPopup(feature.properties?.name || 'No Name')
             .setStyle({
-              color: feature.properties.color,
-              fillColor: feature.properties.color,
+              color: feature.properties?.color || '#000',
+              fillColor: feature.properties?.color || '#000',
             })
             .on('mouseover', (e) => e.target.openPopup())
             .on('mouseout', (e) =>
@@ -64,32 +68,69 @@ const Map = () => {
       },
     });
 
-    if (layersVisible) geoJson.addTo(map);
+    if (layersVisible) geoJsonLayer.addTo(map);
 
-    // const bounds = geoJson.getBounds();
-    // if (bounds.isValid()) map.fitBounds(bounds);
-    // else map.fitBounds(initialBounds);
-
-    return () => map.remove();
+    return () => {
+      map.eachLayer((layer) => {
+        if (layer instanceof L.GeoJSON) {
+          map.removeLayer(layer);
+        }
+      });
+    };
   }, [filteredData, layersVisible]);
 
   const handleSearch = (event) => {
     const value = event.target.value.toLowerCase();
     setSearchTerm(value);
 
-    if (!data) return;
+    if (!data) return; // Ensure data exists
 
+    // Filter features by name
     const filtered = {
       ...data,
-      features: data.features.filter((feature) =>
-        feature.geometry.type.toLowerCase().includes(value)
+      features: data.features.filter(
+        (feature) =>
+          feature.properties?.name &&
+          feature.properties.name.toLowerCase().includes(value)
       ),
     };
 
     setFilteredData(filtered);
+
+    // Fly to the first matching feature
+    if (filtered.features.length > 0) {
+      const firstFeature = filtered.features[0];
+
+      if (firstFeature.geometry?.coordinates) {
+        let targetCoordinates = null;
+
+        if (firstFeature.geometry.type === 'Point') {
+          // Extract point coordinates directly
+          targetCoordinates = firstFeature.geometry.coordinates;
+        } else if (firstFeature.geometry.type === 'Polygon' || firstFeature.geometry.type === 'MultiPolygon') {
+          // Extract the centroid of the polygon (average of first ring)
+          const polygonCoords = firstFeature.geometry.coordinates[0][0]; // Get first ring
+          const sumCoords = polygonCoords.reduce(
+            (acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]],
+            [0, 0]
+          );
+          const centroid = [sumCoords[0] / polygonCoords.length, sumCoords[1] / polygonCoords.length];
+          targetCoordinates = centroid;
+        }
+
+        if (targetCoordinates) {
+          const [lng, lat] = targetCoordinates; // Ensure correct order
+          if (mapRef.current) {
+            mapRef.current.setView([lat, lng], 12, { animate: true });
+          }
+        }
+      }
+    }
   };
 
+
   const toggleLayers = () => setLayersVisible(!layersVisible);
+
   return (
     <div className="relative h-screen w-full">
       <div className="absolute space-y-3 bottom-6 right-2 z-30 p-4 bg-slate-50 bg-opacity-60 min-h-[200px] min-w-[200px] rounded-lg border">
@@ -97,21 +138,21 @@ const Map = () => {
           {isLoading
             ? 'Loading map data...'
             : error
-            ? `Error fetching data:, ${error}`
+            ? `Error fetching data: ${error}`
             : 'Map Data'}
         </p>
         <button
-          className="flex justify-items-end bg-slate-800 text-white hover:bg-slate-600"
+          className="flex justify-items-end bg-slate-800 text-white hover:bg-slate-600 px-3 py-1 rounded"
           onClick={toggleLayers}
         >
           {layersVisible ? 'Hide' : 'Show'} layers
         </button>
         <input
           type="text"
-          placeholder="Search by geometry type (Point, LineString, Polygon)"
+          placeholder="Search Territory"
           value={searchTerm}
           onChange={handleSearch}
-          className="text-black font-light text-sm"
+          className="text-black font-light text-sm w-full px-2 py-1 rounded border"
         />
       </div>
       <div id="map" className="h-full w-full z-10"></div>
