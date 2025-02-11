@@ -13,6 +13,11 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d geodb"]
+      interval: 5s
+      retries: 5
+      start_period: 10s
 
   geoserver:
     image: kartoza/geoserver
@@ -40,8 +45,9 @@ services:
       - ./db:/app
     working_dir: /app
     depends_on:
-      - postgres
-    command: ['python', 'import_geojson.py']
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "sleep 10 && python import_geojson.py"]
 
   frontend:
     build: ./frontend

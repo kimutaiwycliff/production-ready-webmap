@@ -19,10 +19,10 @@ with open("territories.geojson") as f:
 # Insert into PostgreSQL
 for feature in data["features"]:
     geom = shape(feature["geometry"])
-    name = feature["properties"].get("name", "Unknown")
+    name = feature["properties"].get("Name", "Unknown")
 
     cursor.execute(
-        "INSERT INTO geospatial_data (name, geom) VALUES (%s, ST_GeomFromText(%s, 4326))",
+        "INSERT INTO geo_data (name, geom) VALUES (%s, ST_GeomFromText(%s, 4326))",
         (name, geom.wkt)
     )
 
