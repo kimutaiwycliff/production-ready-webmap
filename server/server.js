@@ -34,8 +34,8 @@ const fetchGeoData = async () => {
   try {
     const url =
       'http://geoserver:8080/geoserver/GeoData/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GeoData:territories&outputFormat=application/json';
-    console.log('Fetching GeoJSON from GeoServer...');
     const response = await axios.get(url);
+    console.log('Data fetched from GeoServer successfully.');
     return response.data;
   } catch (error) {
     console.error('Error fetching GeoData:', error.message);
