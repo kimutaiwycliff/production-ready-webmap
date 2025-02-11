@@ -1,9 +1,10 @@
 {
-  "name": "backend",
+  "name": "server",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -13,8 +14,7 @@
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "geojson": "^0.5.0",
-    "pg": "^8.13.1",
+    "pg": "^8.13.2",
     "redis": "^4.7.0"
   }
 }

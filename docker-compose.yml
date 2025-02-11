@@ -58,6 +58,20 @@ services:
     depends_on:
       - postgres
       - geoserver
+  api:
+    build: ./server
+    container_name: api
+    restart: always
+    ports:
+      - "5001:5000"
+    depends_on:
+      - geoserver
+      - redis
+      - postgres
+    volumes:
+      - ./server:/app
+    working_dir: /app
+    command: ["node", "server.js"]
 
 volumes:
   pg_data:
