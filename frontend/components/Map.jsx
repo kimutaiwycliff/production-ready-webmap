@@ -36,7 +36,7 @@ const Map = () => {
     if (!mapRef.current) {
       mapRef.current = L.map('map').setView(
         [-1.2983702370082568, 36.88112302280874], // Default center
-        12
+        8
       );
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -121,7 +121,7 @@ const Map = () => {
         if (targetCoordinates) {
           const [lng, lat] = targetCoordinates; // Ensure correct order
           if (mapRef.current) {
-            mapRef.current.setView([lat, lng], 12, { animate: true });
+            mapRef.current.setView([lat, lng], 10, { animate: true });
           }
         }
       }
