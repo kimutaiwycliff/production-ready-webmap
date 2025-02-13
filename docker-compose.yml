@@ -26,9 +26,9 @@ services:
     environment:
       - GEOSERVER_ADMIN_USER=admin
       - GEOSERVER_ADMIN_PASSWORD=geoserver
-      - GEOSERVER_DATA_DIR=/opt/geoserver/data_dir  # 👈 Explicitly set the data directory
+      - GEOSERVER_DATA_DIR=/opt/geoserver/data_dir
     volumes:
-      - geoserver_data:/opt/geoserver/data_dir  # 👈 Mount the correct directory
+      - geoserver_data:/opt/geoserver/data_dir
     ports:
       - '8080:8080'
 
@@ -58,20 +58,16 @@ services:
     depends_on:
       - postgres
       - geoserver
-  api:
-    build: ./server
-    container_name: api
-    restart: always
-    ports:
-      - "5001:5001"
-    depends_on:
-      - geoserver
       - redis
-      - postgres
-    volumes:
-      - ./server:/app
-    working_dir: /app
-    command: ["node", "server.js"]
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: geodb
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      GEOSERVER_URL: http://geoserver:8080/geoserver/GeoData/ows
 
 volumes:
   pg_data:

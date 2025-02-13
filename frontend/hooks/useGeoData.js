@@ -7,13 +7,13 @@ import { useDispatch, useSelector } from "react-redux";
 
 const fetchGeoData = async () => {
   try {
-    const { data } = await axios.get("http://localhost:5001/api/geojson", {
+    const { data } = await axios.get("/api/geojson", {
       timeout: 5000, // Set a timeout to avoid hanging requests
     });
     return data;
   } catch (error) {
     console.error("Error fetching geo data:", error.message);
-    return null; 
+    return null;
   }
 };
 

@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css';
 import { useGeoData } from '@/hooks/useGeoData';
 import { useDispatch } from 'react-redux';
 import { setGeoData } from '@/store/geoSlice';
+import { GeoSearchControl, OpenStreetMapProvider } from 'leaflet-geosearch';
+import 'leaflet-geosearch/dist/geosearch.css';
 
 const Map = () => {
   const dispatch = useDispatch();
@@ -43,6 +45,19 @@ const Map = () => {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(mapRef.current);
+      // Initialize GeoSearch
+      const provider = new OpenStreetMapProvider();
+      const searchControl = new GeoSearchControl({
+        provider,
+        style: 'bar',
+        showMarker: true,
+        showPopup: true,
+        marker: {
+          icon,
+        },
+      });
+
+      mapRef.current.addControl(searchControl);
     }
 
     const map = mapRef.current;
