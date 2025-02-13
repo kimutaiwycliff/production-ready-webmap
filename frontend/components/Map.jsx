@@ -15,15 +15,16 @@ const Map = () => {
   const [layersVisible, setLayersVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [selectedIndex, setSelectedIndex] = useState(-1); // Track keyboard selection
-  const mapRef = useRef(null);
-  const inputRef = useRef(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [filteredData, setFilteredData] = useState(null);
+  const [activeLayer, setActiveLayer] = useState('OpenStreetMap');
 
-  useEffect(() => {
-    if (data) {
-      dispatch(setGeoData(data));
-    }
-  }, [data, dispatch]);
+  const mapRef = useRef(null);
+  const geoJsonLayerRef = useRef(null);
+  const inputRef = useRef(null);
+  const searchControlRef = useRef(null);
+  const tileLayerRef = useRef(null);
 
   const icon = L.icon({
     iconUrl: 'globe.svg',
@@ -31,30 +32,61 @@ const Map = () => {
     iconAnchor: [16, 37],
     popupAnchor: [0, -30],
   });
+  const provider = new OpenStreetMapProvider();
+  const tileLayers = {
+    OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    CartoDark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    EsriSatellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  };
 
   useEffect(() => {
-    if (!data) return;
-
     if (!mapRef.current) {
-      mapRef.current = L.map('map').setView([-1.2983702370082568, 36.88112302280874], 8);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      mapRef.current = L.map('map').setView([39.74076332773484, -96.73361614703323], 4);
+      // Add default tile layer
+      tileLayerRef.current = L.tileLayer(tileLayers[activeLayer], {
+        attribution: '&copy; OpenStreetMap contributors',
       }).addTo(mapRef.current);
-
-      const provider = new OpenStreetMapProvider();
-      const searchControl = new GeoSearchControl({
+      setMapLoaded(true);
+    }
+    if (!searchControlRef.current) {
+      searchControlRef.current = new GeoSearchControl({
         provider,
         style: 'bar',
+        autoComplete: true,
+        autoCompleteDelay: 250,
         showMarker: true,
-        showPopup: true,
-        marker: { icon },
+        marker: {
+          icon
+        },
       });
 
-      mapRef.current.addControl(searchControl);
+      mapRef.current.addControl(searchControlRef.current);
+    }
+  }, []);
+  const switchLayer = (layerKey) => {
+    if (!mapRef.current || !tileLayers[layerKey]) return;
+
+    mapRef.current.removeLayer(tileLayerRef.current);
+    tileLayerRef.current = L.tileLayer(tileLayers[layerKey], {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(mapRef.current);
+
+    setActiveLayer(layerKey);
+  };
+
+  useEffect(() => {
+    if (!mapRef.current || !data) return;
+
+    dispatch(setGeoData(data));
+    setFilteredData(data);
+
+    // Remove previous layer if it exists
+    if (geoJsonLayerRef.current) {
+      mapRef.current.removeLayer(geoJsonLayerRef.current);
     }
 
-    const geoJsonLayer = L.geoJSON(data, {
+    // Create and add new GeoJSON layer
+    geoJsonLayerRef.current = L.geoJSON(data, {
       style: () => ({ color: '#000', weight: 0.5 }),
       pointToLayer: (feature, latlng) =>
         L.marker(latlng, { icon }).bindPopup(feature.properties?.name || 'Point'),
@@ -63,22 +95,17 @@ const Map = () => {
           layer
             .bindPopup(feature.properties?.name || 'No Name')
             .setStyle({ color: feature.properties?.color || '#000', fillColor: feature.properties?.color || '#000' })
-            .on('mouseover', (e) => e.target.openPopup())
-            .on('mouseout', (e) => e.target.closePopup().setStyle({ color: '#000', fillColor: '#000' }));
+            .on('mouseover', (e) => e.target.openPopup().setStyle({ color: '#000', fillColor: '#000' }))
+            .on('mouseout', (e) => e.target.closePopup().setStyle({ color: feature.properties?.color || '#000', fillColor: feature.properties?.color || '#000' }));
         }
       },
     });
 
-    if (layersVisible) geoJsonLayer.addTo(mapRef.current);
+    if (layersVisible) {
+      geoJsonLayerRef.current.addTo(mapRef.current);
+    }
+  }, [data, dispatch, layersVisible]);
 
-    return () => {
-      mapRef.current.eachLayer((layer) => {
-        if (layer instanceof L.GeoJSON) {
-          mapRef.current.removeLayer(layer);
-        }
-      });
-    };
-  }, [data, layersVisible]);
 
   const handleSearch = (event) => {
     const value = event.target.value.toLowerCase();
@@ -112,7 +139,7 @@ const Map = () => {
 
     if (targetCoordinates) {
       const [lng, lat] = targetCoordinates;
-      mapRef.current.setView([lat, lng], 12, { animate: true });
+      mapRef.current.setView([lat, lng], 8, { animate: true });
     }
 
     setSearchResults([]); // Clear the suggestions list but keep the input text
@@ -140,18 +167,18 @@ const Map = () => {
 
   return (
     <div className="relative h-screen w-full">
-      <div className="absolute space-y-3 bottom-6 right-2 z-30 p-4 bg-slate-50 bg-opacity-60 min-h-[200px] min-w-[200px] rounded-lg border">
+      {!mapLoaded || isLoading ? (
+        <div className="absolute inset-0 flex justify-center items-center bg-white bg-opacity-5 z-50">
+          <div className="w-16 h-16 border-4 border-blue-500 border-dotted rounded-full animate-spin"></div>
+        </div>
+      ) : null}
+
+      <div className="absolute space-y-3 top-24 left-4 z-30 p-4 bg-slate-50 bg-opacity-60 min-h-[200px] min-w-[200px] rounded-lg border">
         <p className="text-black font-bold text-center">
-          {isLoading ? 'Loading map data...' : error ? `Error fetching data: ${error}` : 'Map Data'}
+          {isLoading ? 'Loading map data...' : error ? `Error fetching data: ${error}` : 'Native Land Territories'}
         </p>
-        <button
-          className="flex justify-items-end bg-slate-800 text-white hover:bg-slate-600 px-3 py-1 rounded"
-          onClick={toggleLayers}
-        >
-          {layersVisible ? 'Hide' : 'Show'} layers
-        </button>
         <div className="relative">
-          <div className="flex items-center border rounded px-2">
+          <div className="flex items-center border border-blue-500 rounded hover:border-blue-600">
             <input
               ref={inputRef}
               type="text"
@@ -168,11 +195,11 @@ const Map = () => {
             )}
           </div>
           {searchResults.length > 0 && (
-            <ul className="absolute bg-white border rounded w-full mt-1 max-h-30 overflow-auto z-50 shadow-lg">
+            <ul className="absolute bg-white border rounded w-full mt-1 max-h-40 overflow-auto z-50 shadow-lg">
               {searchResults.map((feature, index) => (
                 <li
                   key={index}
-                  className={`p-2 cursor-pointer ${
+                  className={`p-2 cursor-pointer text-sm ${
                     selectedIndex === index ? 'bg-gray-300' : 'hover:bg-gray-200'
                   }`}
                   onClick={() => zoomToFeature(feature)}
@@ -184,6 +211,29 @@ const Map = () => {
           )}
         </div>
       </div>
+      {/* Tile layer selection buttons */}
+      <div className="absolute bottom-4 left-4 flex flex-row gap-1 bg-white bg-opacity-5 rounded-lg shadow-md z-50">
+        {Object.keys(tileLayers).map((key) => (
+          <button
+            key={key}
+            onClick={() => switchLayer(key)}
+            className={`px-3 py-1 text-sm rounded ${
+              activeLayer === key ? 'bg-blue-600 text-white' : 'bg-gray-200'
+            }`}
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+      <div className="absolute top-4 right-4 z-50">
+      <button
+          className="flex justify-items-end bg-slate-600 text-white hover:bg-slate-800 px-3 py-1 rounded text-sm "
+          onClick={toggleLayers}
+        >
+          {layersVisible ? 'Hide' : 'Show'} layers
+        </button>
+      </div>
+
       <div id="map" className="h-full w-full z-10"></div>
     </div>
   );
