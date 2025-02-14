@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useGeoData } from '@/hooks/useGeoData';
@@ -17,7 +17,6 @@ const Map = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [filteredData, setFilteredData] = useState(null);
   const [activeLayer, setActiveLayer] = useState('OpenStreetMap');
 
   const mapRef = useRef(null);
@@ -26,19 +25,27 @@ const Map = () => {
   const searchControlRef = useRef(null);
   const tileLayerRef = useRef(null);
 
-  const icon = L.icon({
-    iconUrl: 'globe.svg',
-    iconSize: [32, 37],
-    iconAnchor: [16, 37],
-    popupAnchor: [0, -30],
-  });
+  const icon = useMemo(
+    () =>
+      L.icon({
+        iconUrl: 'globe.svg',
+        iconSize: [32, 37],
+        iconAnchor: [16, 37],
+        popupAnchor: [0, -30],
+      }),
+    []
+  );
   const provider = new OpenStreetMapProvider();
-  const tileLayers = {
-    OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    CartoDark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    EsriSatellite:
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  };
+  const tileLayers = useMemo(
+    () => ({
+      OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      CartoDark:
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      EsriSatellite:
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    }),
+    []
+  );
 
   useEffect(() => {
     if (!mapRef.current) {
@@ -66,23 +73,25 @@ const Map = () => {
 
       mapRef.current.addControl(searchControlRef.current);
     }
-  }, []);
-  const switchLayer = (layerKey) => {
-    if (!mapRef.current || !tileLayers[layerKey]) return;
+  }, [activeLayer, icon, provider]);
+  const switchLayer = useCallback(
+    (layerKey) => {
+      if (!mapRef.current || !tileLayers[layerKey]) return;
 
-    mapRef.current.removeLayer(tileLayerRef.current);
-    tileLayerRef.current = L.tileLayer(tileLayers[layerKey], {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(mapRef.current);
+      mapRef.current.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = L.tileLayer(tileLayers[layerKey], {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(mapRef.current);
 
-    setActiveLayer(layerKey);
-  };
+      setActiveLayer(layerKey);
+    },
+    [tileLayers]
+  );
 
   useEffect(() => {
     if (!mapRef.current || !data) return;
 
     dispatch(setGeoData(data));
-    setFilteredData(data);
 
     // Remove previous layer if it exists
     if (geoJsonLayerRef.current) {
@@ -117,27 +126,25 @@ const Map = () => {
     }
   }, [data, dispatch, layersVisible]);
 
-  const handleSearch = (event) => {
-    const value = event.target.value.toLowerCase();
-    setSearchTerm(value);
-    setSelectedIndex(-1); // Reset keyboard selection
-
-    if (!data) return;
-
-    const filtered = data.features.filter(
+  const filtered = useMemo(() => {
+    if (!data || !searchTerm) return [];
+    return data.features.filter(
       (feature) =>
         feature.properties?.name &&
-        feature.properties.name.toLowerCase().includes(value)
+        feature.properties.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+  }, [data, searchTerm]);
 
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value.toLowerCase());
+    setSelectedIndex(-1);
     setSearchResults(filtered);
   };
 
-  const zoomToFeature = (feature) => {
+  const zoomToFeature = useCallback((feature) => {
     if (!feature.geometry?.coordinates || !mapRef.current) return;
 
     let targetCoordinates = null;
-
     if (feature.geometry.type === 'Point') {
       targetCoordinates = feature.geometry.coordinates;
     } else if (
@@ -161,13 +168,13 @@ const Map = () => {
     }
 
     setSearchResults([]); // Clear the suggestions list but keep the input text
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setSearchTerm('');
     setSearchResults([]);
     setSelectedIndex(-1);
-  };
+  }, []);
 
   const handleKeyDown = (event) => {
     if (searchResults.length === 0) return;
@@ -183,7 +190,7 @@ const Map = () => {
     }
   };
 
-  const toggleLayers = () => setLayersVisible(!layersVisible);
+  const toggleLayers = useCallback(() => setLayersVisible((prev) => !prev), []);
 
   return (
     <div className="relative h-screen w-full">
