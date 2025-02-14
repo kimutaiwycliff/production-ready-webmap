@@ -10,7 +10,11 @@ import 'leaflet-geosearch/dist/geosearch.css';
 
 const Map = () => {
   const dispatch = useDispatch();
-  const { data, error, isLoading } = useGeoData();
+  const mapRef = useRef(null);
+  const geoJsonLayerRef = useRef(null);
+  const inputRef = useRef(null);
+  const searchControlRef = useRef(null);
+  const tileLayerRef = useRef(null);
 
   const [layersVisible, setLayersVisible] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,11 +23,7 @@ const Map = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [activeLayer, setActiveLayer] = useState('OpenStreetMap');
 
-  const mapRef = useRef(null);
-  const geoJsonLayerRef = useRef(null);
-  const inputRef = useRef(null);
-  const searchControlRef = useRef(null);
-  const tileLayerRef = useRef(null);
+  const { data, error, isLoading } = useGeoData(mapRef.current);
 
   const icon = useMemo(
     () =>
@@ -74,6 +74,7 @@ const Map = () => {
       mapRef.current.addControl(searchControlRef.current);
     }
   }, [activeLayer, icon, provider]);
+
   const switchLayer = useCallback(
     (layerKey) => {
       if (!mapRef.current || !tileLayers[layerKey]) return;
