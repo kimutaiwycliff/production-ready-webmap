@@ -36,12 +36,16 @@ const Map = () => {
   const tileLayers = {
     OpenStreetMap: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     CartoDark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    EsriSatellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    EsriSatellite:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   };
 
   useEffect(() => {
     if (!mapRef.current) {
-      mapRef.current = L.map('map').setView([39.74076332773484, -96.73361614703323], 4);
+      mapRef.current = L.map('map').setView(
+        [39.74076332773484, -96.73361614703323],
+        4
+      );
       // Add default tile layer
       tileLayerRef.current = L.tileLayer(tileLayers[activeLayer], {
         attribution: '&copy; OpenStreetMap contributors',
@@ -56,7 +60,7 @@ const Map = () => {
         autoCompleteDelay: 250,
         showMarker: true,
         marker: {
-          icon
+          icon,
         },
       });
 
@@ -89,14 +93,21 @@ const Map = () => {
     geoJsonLayerRef.current = L.geoJSON(data, {
       style: () => ({ color: '#000', weight: 0.5 }),
       pointToLayer: (feature, latlng) =>
-        L.marker(latlng, { icon }).bindPopup(feature.properties?.name || 'Point'),
+        L.marker(latlng, { icon }).bindPopup(
+          feature.properties?.name || 'Point'
+        ),
       onEachFeature: (feature, layer) => {
         if (feature.geometry.type === 'MultiPolygon') {
           layer
-            .bindPopup(feature.properties?.name || 'No Name')
-            .setStyle({ color: feature.properties?.color || '#000', fillColor: feature.properties?.color || '#000' })
-            .on('mouseover', (e) => e.target.openPopup().setStyle({ color: '#000', fillColor: '#000' }))
-            .on('mouseout', (e) => e.target.closePopup().setStyle({ color: feature.properties?.color || '#000', fillColor: feature.properties?.color || '#000' }));
+            .bindPopup(
+              `<strong>${feature.properties?.name || 'No Name'}</strong>`
+            )
+            .setStyle({
+              color: feature.properties?.color || '#000',
+              fillColor: feature.properties?.color || '#000',
+            })
+            .on('mouseover', (e) => e.target.openPopup())
+            .on('mouseout', (e) => e.target.closePopup());
         }
       },
     });
@@ -106,7 +117,6 @@ const Map = () => {
     }
   }, [data, dispatch, layersVisible]);
 
-
   const handleSearch = (event) => {
     const value = event.target.value.toLowerCase();
     setSearchTerm(value);
@@ -115,7 +125,9 @@ const Map = () => {
     if (!data) return;
 
     const filtered = data.features.filter(
-      (feature) => feature.properties?.name && feature.properties.name.toLowerCase().includes(value)
+      (feature) =>
+        feature.properties?.name &&
+        feature.properties.name.toLowerCase().includes(value)
     );
 
     setSearchResults(filtered);
@@ -128,13 +140,19 @@ const Map = () => {
 
     if (feature.geometry.type === 'Point') {
       targetCoordinates = feature.geometry.coordinates;
-    } else if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+    } else if (
+      feature.geometry.type === 'Polygon' ||
+      feature.geometry.type === 'MultiPolygon'
+    ) {
       const polygonCoords = feature.geometry.coordinates[0][0];
       const sumCoords = polygonCoords.reduce(
         (acc, coord) => [acc[0] + coord[0], acc[1] + coord[1]],
         [0, 0]
       );
-      targetCoordinates = [sumCoords[0] / polygonCoords.length, sumCoords[1] / polygonCoords.length];
+      targetCoordinates = [
+        sumCoords[0] / polygonCoords.length,
+        sumCoords[1] / polygonCoords.length,
+      ];
     }
 
     if (targetCoordinates) {
@@ -155,7 +173,9 @@ const Map = () => {
     if (searchResults.length === 0) return;
 
     if (event.key === 'ArrowDown') {
-      setSelectedIndex((prevIndex) => Math.min(prevIndex + 1, searchResults.length - 1));
+      setSelectedIndex((prevIndex) =>
+        Math.min(prevIndex + 1, searchResults.length - 1)
+      );
     } else if (event.key === 'ArrowUp') {
       setSelectedIndex((prevIndex) => Math.max(prevIndex - 1, 0));
     } else if (event.key === 'Enter' && selectedIndex !== -1) {
@@ -167,40 +187,50 @@ const Map = () => {
 
   return (
     <div className="relative h-screen w-full">
+      {/* Loader */}
       {!mapLoaded || isLoading ? (
-        <div className="absolute inset-0 flex justify-center items-center bg-white bg-opacity-5 z-50">
-          <div className="w-16 h-16 border-4 border-blue-500 border-dotted rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex justify-center items-center bg-black bg-opacity-20 z-50">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : null}
 
-      <div className="absolute space-y-3 top-24 left-4 z-30 p-4 bg-slate-50 bg-opacity-60 min-h-[200px] min-w-[200px] rounded-lg border">
-        <p className="text-black font-bold text-center">
-          {isLoading ? 'Loading map data...' : error ? `Error fetching data: ${error}` : 'Native Land Territories'}
+      {/* Search Bar */}
+      <div className="absolute space-y-3 top-24 left-4 z-50 p-4 bg-slate-50 bg-opacity-60 min-h-[200px] min-w-[200px] rounded-md">
+        <p className="text-black font-semibold text-center">
+          {isLoading
+            ? 'Loading data...'
+            : error
+            ? `Error: ${error}`
+            : 'Find Territories'}
         </p>
         <div className="relative">
-          <div className="flex items-center border border-blue-500 rounded hover:border-blue-600">
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search Territory"
-              value={searchTerm}
-              onChange={handleSearch}
-              onKeyDown={handleKeyDown}
-              className="text-black font-light text-sm w-full py-1 focus:outline-none"
-            />
-            {searchTerm && (
-              <button onClick={clearSearch} className="text-gray-500 hover:text-black ml-2">
-                ✕
-              </button>
-            )}
-          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search by name..."
+            value={searchTerm}
+            onChange={handleSearch}
+            onKeyDown={handleKeyDown}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-300"
+          />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-2 top-2 text-gray-500 hover:text-black"
+            >
+              ✕
+            </button>
+          )}
+
           {searchResults.length > 0 && (
             <ul className="absolute bg-white border rounded w-full mt-1 max-h-40 overflow-auto z-50 shadow-lg">
               {searchResults.map((feature, index) => (
                 <li
                   key={index}
                   className={`p-2 cursor-pointer text-sm ${
-                    selectedIndex === index ? 'bg-gray-300' : 'hover:bg-gray-200'
+                    selectedIndex === index
+                      ? 'bg-gray-300'
+                      : 'hover:bg-gray-200'
                   }`}
                   onClick={() => zoomToFeature(feature)}
                 >
@@ -211,8 +241,9 @@ const Map = () => {
           )}
         </div>
       </div>
-      {/* Tile layer selection buttons */}
-      <div className="absolute bottom-4 left-4 flex flex-row gap-1 bg-white bg-opacity-5 rounded-lg shadow-md z-50">
+
+      {/* Layer Switcher */}
+      <div className="absolute bottom-4 left-4 flex flex-row gap-1 p-1 rounded-lg shadow-md z-50">
         {Object.keys(tileLayers).map((key) => (
           <button
             key={key}
@@ -225,15 +256,18 @@ const Map = () => {
           </button>
         ))}
       </div>
+
+      {/* Toggle Layers */}
       <div className="absolute top-4 right-4 z-50">
-      <button
-          className="flex justify-items-end bg-slate-600 text-white hover:bg-slate-800 px-3 py-1 rounded text-sm "
+        <button
+          className="bg-gray-800 text-white px-3 text-sm py-2 rounded-md hover:bg-gray-700"
           onClick={toggleLayers}
         >
           {layersVisible ? 'Hide' : 'Show'} layers
         </button>
       </div>
 
+      {/* Map Container */}
       <div id="map" className="h-full w-full z-10"></div>
     </div>
   );
