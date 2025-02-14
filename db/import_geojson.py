@@ -1,10 +1,26 @@
 import json
 import psycopg2
+import time
 from shapely.geometry import shape
-from geoalchemy2.shape import from_shape
 
-# Database connection
-conn = psycopg2.connect(dbname="geodb", user="admin", password="admin", host="postgres")
+#Database credentials
+DB_NAME = "geodb"
+DB_USER = "admin"
+DB_PASSWORD = "admin"
+DB_HOST = "postgres"
+
+# Wait for the database to be ready
+for i in range(10):
+    try:
+        conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST)
+        print("✅ Connected to PostgreSQL successfully!")
+        break
+    except psycopg2.OperationalError:
+        print(f"⏳ PostgreSQL not ready yet ({i+1}/10) ... rettrying in 5 seconds")
+        time.sleep(5)
+else:
+    raise Exception("❌ Failed to connect to PostgreSQL after 10 attempts")
+
 cursor = conn.cursor()
 
 # Read GeoJSON file
