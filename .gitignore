@@ -24,7 +24,6 @@ dist/
 
 # GeoServer & GIS files
 geoserver_data/
-*.geojson
 *.shp
 *.dbf
 *.prj
